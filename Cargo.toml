@@ -10,3 +10,4 @@ edition = "2018"
 # actix = "0.8.3"
 tokio = { branch = "master", git = "https://github.com/tokio-rs/tokio"}
 async-trait = "0.1.11"
+fake-static = "0.1.0"

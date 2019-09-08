@@ -1,33 +1,41 @@
 use async_trait::async_trait;
+use fake_static::make_static;
 use std::sync::Arc;
 
 #[async_trait]
-trait Trigger: Send + Sync {
+pub trait Trigger: Send + Sync {
     async fn poll(&self) -> bool;
 }
 
 #[async_trait]
-trait Action: Send + Sync {
+pub trait Action: Send + Sync {
     async fn act(&self) -> bool;
 }
 
-struct Connector {
-    connections: Arc<Vec<(Arc<dyn Trigger>, Arc<dyn Action>)>>,
+#[derive(Default)]
+pub struct Connector {
+    connections: Vec<(Arc<dyn Trigger>, Arc<dyn Action>)>,
 }
 
-impl Connector {
-    fn new() -> Self {
-        Self {
-            connections: Arc::new(Vec::new()),
-        }
+impl<'a> Connector {
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    fn run(self) -> ! {
+    pub fn add_connection<T: Trigger + 'static, A: Action + 'static>(
+        &mut self,
+        trigger: T,
+        action: A,
+    ) {
+        self.connections.push((Arc::new(trigger), Arc::new(action)));
+    }
+
+    pub fn run(self) -> ! {
         let Connector { connections } = self;
-        let cons = Arc::new(connections);
+        let con = make_static(&connections);
         loop {
             // Temporary value is dropped while borrowed, must have 'static lifetime
-            for (trigger, action) in cons.clone().iter() {
+            for (trigger, action) in con {
                 tokio::spawn(async move {
                     if trigger.poll().await {
                         action.act().await;
