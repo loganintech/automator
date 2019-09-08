@@ -1,38 +1,39 @@
-pub trait Event {
-    fn id() -> &'static str;
+use async_trait::async_trait;
+use std::sync::Arc;
+
+#[async_trait]
+trait Trigger: Send + Sync {
+    async fn poll(&self) -> bool;
 }
 
-pub trait Provider {
-    fn poll(&self) -> Option<String>;
+#[async_trait]
+trait Action: Send + Sync {
+    async fn act(&self) -> bool;
 }
 
-pub trait Action {
-    fn trigger(&mut self, data: String) -> bool;
-}
-
-#[derive(Default)]
-pub struct Connector {
-    connections: Vec<(Box<dyn Provider>, Box<dyn Action>)>,
+struct Connector {
+    connections: Arc<Vec<(Arc<dyn Trigger>, Arc<dyn Action>)>>,
 }
 
 impl Connector {
-    pub fn new() -> Self {
-        Default::default()
+    fn new() -> Self {
+        Self {
+            connections: Arc::new(Vec::new()),
+        }
     }
 
-    pub fn with_connection(mut self, con: (Box<dyn Provider>, Box<dyn Action>)) -> Self {
-        self.connections.push(con);
-        self
-    }
-
-    pub fn run(&mut self) -> std::result::Result<(), &'static str> {
+    fn run(self) -> ! {
+        let Connector { connections } = self;
+        let cons = Arc::new(connections);
         loop {
-            for (prov, act) in self.connections.iter_mut() {
-                if let Some(data) = prov.poll() {
-                    act.trigger(data);
-                }
+            // Temporary value is dropped while borrowed, must have 'static lifetime
+            for (trigger, action) in cons.clone().iter() {
+                tokio::spawn(async move {
+                    if trigger.poll().await {
+                        action.act().await;
+                    }
+                });
             }
         }
-        Ok(())
     }
 }
