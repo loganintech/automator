@@ -1,23 +1,22 @@
-use async_trait::async_trait;
-use fake_static::make_static;
-use std::sync::Arc;
+use std::cell::RefCell;
 
-#[async_trait]
-pub trait Trigger: Send + Sync {
-    async fn poll(&self) -> bool;
+pub trait Trigger {
+    fn poll(&mut self) -> bool;
 }
 
-#[async_trait]
-pub trait Action: Send + Sync {
-    async fn act(&self) -> bool;
+pub trait Action {
+    fn act(&mut self) -> bool;
 }
+
+type DynamicTrigger = Box<RefCell<dyn Trigger>>;
+type DynamicAction = Box<RefCell<dyn Action>>;
 
 #[derive(Default)]
 pub struct Connector {
-    connections: Vec<(Arc<dyn Trigger>, Arc<dyn Action>)>,
+    connections: Vec<(DynamicTrigger, DynamicAction)>,
 }
 
-impl<'a> Connector {
+impl Connector {
     pub fn new() -> Self {
         Default::default()
     }
@@ -27,20 +26,25 @@ impl<'a> Connector {
         trigger: T,
         action: A,
     ) {
-        self.connections.push((Arc::new(trigger), Arc::new(action)));
+        self.connections.push((
+            Box::new(RefCell::new(trigger)),
+            Box::new(RefCell::new(action)),
+        ));
     }
 
     pub fn run(self) -> ! {
-        let Connector { connections } = self;
-        let con = make_static(&connections);
+        let mut connections = self.connections;
+        let mut idx = 0;
         loop {
-            // Temporary value is dropped while borrowed, must have 'static lifetime
-            for (trigger, action) in con {
-                tokio::spawn(async move {
-                    if trigger.poll().await {
-                        action.act().await;
-                    }
-                });
+            if idx == connections.len() - 1 {
+                idx = 0;
+            } else {
+                idx += 1;
+            }
+            let (trigger, action) = &mut connections[idx];
+
+            if trigger.get_mut().poll() {
+                action.get_mut().act();
             }
         }
     }
