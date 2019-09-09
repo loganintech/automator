@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::time::{Duration, Instant};
 
 pub trait Trigger {
     fn poll(&mut self) -> bool;
@@ -47,5 +48,39 @@ impl Connector {
                 action.get_mut().act();
             }
         }
+    }
+}
+
+pub struct Interval {
+    last: Instant,
+    interval: Duration,
+}
+
+impl Interval {
+    pub fn new(interval: Duration) -> Self {
+        Self {
+            last: Instant::now(),
+            interval,
+        }
+    }
+}
+
+impl Trigger for Interval {
+    fn poll(&mut self) -> bool {
+        if Instant::now().duration_since(self.last) > self.interval {
+            self.last = Instant::now();
+            return true;
+        }
+
+        false
+    }
+}
+
+pub struct DebugAction;
+
+impl Action for DebugAction {
+    fn act(&mut self) -> bool {
+        println!("Debug");
+        true
     }
 }
