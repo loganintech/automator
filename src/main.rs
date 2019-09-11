@@ -1,9 +1,8 @@
 use automator::*;
-// use reqwest::Client;
 use itertools::izip;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::process::{Command, Output};
+use std::process::Command;
 use std::time::Duration;
 
 lazy_static! {
@@ -15,23 +14,32 @@ lazy_static! {
 fn main() {
     let mut con = Connector::new();
     // con.add_connection(Interval::new(Duration::from_secs(5)), DebugAction {});
+    #[cfg(not(target_os = "windows"))]
     con.add_connection(
         Interval::new(Duration::from_secs(1)),
-        SwitchAudio::new(
+        SwitchPulseAudio::new(
             "Built-in Audio Digital Stereo (IEC958)",
             "Alienware Wireless Gaming Headset AW988 Analog Mono",
         ),
     );
+
+    #[cfg(target_os = "windows")]
+    con.add_connection(
+        Interval::new(Duration::from_secs(5)),
+        NirCmdSetAudio::new("Realtek Digital Output (Realtek(R) Audio)"),
+    );
     con.run();
 }
 
-struct SwitchAudio {
+#[cfg(not(target_os = "windows"))]
+struct SwitchPulseAudio {
     first: &'static str,
     second: &'static str,
     is_first: bool,
 }
 
-impl SwitchAudio {
+#[cfg(not(target_os = "windows"))]
+impl SwitchPulseAudio {
     pub fn new(first: &'static str, second: &'static str) -> Self {
         Self {
             first,
@@ -48,10 +56,10 @@ impl SwitchAudio {
 
         let data = String::from_utf8(pacmd.stdout).expect("Couldn't parse pacmd output.");
 
-        let name_matches = dbg!(NAMES
+        let name_matches = NAMES
             .captures_iter(&data)
             .map(|s| s.iter().nth(1).unwrap().unwrap().as_str().to_string())
-            .collect::<Vec<String>>());
+            .collect::<Vec<String>>();
         let desc_matches = DESCRIPTIONS
             .captures_iter(&data)
             .map(|s| s.iter().nth(1).unwrap().unwrap().as_str().to_string())
@@ -94,10 +102,11 @@ impl SwitchAudio {
     }
 }
 
-impl Action for SwitchAudio {
+#[cfg(not(target_os = "windows"))]
+impl Action for SwitchPulseAudio {
     fn act(&mut self) -> bool {
         println!("Changing");
-        let dat = SwitchAudio::get_pairs();
+        let dat = SwitchPulseAudio::get_pairs();
         let mut cmd = Command::new("pacmd");
         let mut cmd = cmd.arg("set-default-sink");
         let mut snum = 0;
@@ -111,7 +120,7 @@ impl Action for SwitchAudio {
 
         cmd.spawn().expect("Couldn't change audio device.");
 
-        let inps = dbg!(SwitchAudio::inputs_to_move());
+        let inps = dbg!(SwitchPulseAudio::inputs_to_move());
         for inp in inps {
             Command::new("pacmd")
                 .arg("move-sink-input")
@@ -123,5 +132,40 @@ impl Action for SwitchAudio {
         self.is_first = !self.is_first;
 
         true
+    }
+}
+
+#[cfg(target_os = "windows")]
+struct NirCmdSetAudio {
+    device: &'static str,
+}
+
+#[cfg(target_os = "windows")]
+impl NirCmdSetAudio {
+    fn new(device: &'static str) -> Self {
+        Self { device }
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl Action for NirCmdSetAudio {
+    fn act(&mut self) -> bool {
+        let mut val = true;
+        let out = Command::new(format!(
+            "nircmdc setdefaultsounddevice \"{}\" 1",
+            self.device
+        ))
+        .output()
+        .map_err(|e| {
+            eprintln!("Couldn't run nircmd.exe");
+            val = false;
+            eprintln!("{:?}", e);
+        })
+        .expect("err with nircmd");
+
+        // println!("Stderr: {}", String::from_utf8(out.stderr).unwrap());
+        // println!("Stdout: {}", String::from_utf8(out.stdout).unwrap());
+
+        val
     }
 }

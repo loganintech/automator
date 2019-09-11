@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::time::{Duration, Instant};
 
 pub trait Trigger {
@@ -9,8 +8,8 @@ pub trait Action {
     fn act(&mut self) -> bool;
 }
 
-type DynamicTrigger = Box<RefCell<dyn Trigger>>;
-type DynamicAction = Box<RefCell<dyn Action>>;
+type DynamicTrigger = Box<dyn Trigger>;
+type DynamicAction = Box<dyn Action>;
 
 #[derive(Default)]
 pub struct Connector {
@@ -27,10 +26,7 @@ impl Connector {
         trigger: T,
         action: A,
     ) {
-        self.connections.push((
-            Box::new(RefCell::new(trigger)),
-            Box::new(RefCell::new(action)),
-        ));
+        self.connections.push((Box::new(trigger), Box::new(action)));
     }
 
     pub fn run(self) -> ! {
@@ -44,8 +40,8 @@ impl Connector {
             }
             let (trigger, action) = &mut connections[idx];
 
-            if trigger.get_mut().poll() {
-                action.get_mut().act();
+            if trigger.poll() {
+                action.act();
             }
         }
     }
