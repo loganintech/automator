@@ -1,82 +1,55 @@
-use std::time::{Duration, Instant};
-
-pub trait Trigger {
-    fn poll(&mut self) -> bool;
+trait Action<'a, T, E> {
+    fn action(&'a mut self) -> Result<T, E>;
 }
 
-pub trait Action {
-    fn act(&mut self) -> bool;
+trait Trigger<'a, T, E> {
+    fn listen(&'a mut self) -> Result<T, E>;
 }
 
-type DynamicTrigger = Box<dyn Trigger>;
-type DynamicAction = Box<dyn Action>;
-
-#[derive(Default)]
-pub struct Connector {
-    connections: Vec<(DynamicTrigger, DynamicAction)>,
+// Action Type
+// Trigger Type
+// Action Error
+// Trigger Error
+struct Bridge<'a, AT, TT, AE, TE> {
+    a: Box<dyn Action<'a, AT, AE>>,
+    t: Box<dyn Trigger<'a, TT, TE>>,
 }
 
-impl Connector {
-    pub fn new() -> Self {
-        Default::default()
+struct BridgeBuilder<AT, TT, AE, TE, 'a> {
+    a: Option<Box<dyn Action<'a, AT, AE>>>,
+    t: Option<Box<dyn Trigger<'a, TT, TE>>>,
+}
+
+impl<'a, AT, TT, AE, TE> BridgeBuilder<'a, AT, TT, AE, TE> {
+    fn new() -> Self {
+        Self { a: None, t: None }
     }
 
-    pub fn add_connection<T: Trigger + 'static, A: Action + 'static>(
-        &mut self,
-        trigger: T,
-        action: A,
-    ) {
-        self.connections.push((Box::new(trigger), Box::new(action)));
+    fn with_action(self, a: Box<dyn Action<'a, AT, AE>>) -> Self {
+        self.a = Some(a);
+        self
     }
 
-    pub fn run(self) -> ! {
-        let mut connections = self.connections;
-        let mut idx = 0;
-        loop {
-            if idx == connections.len() - 1 {
-                idx = 0;
-            } else {
-                idx += 1;
-            }
-            let (trigger, action) = &mut connections[idx];
+    fn with_trigger(self, t: Box<dyn Trigger<'a, TT, TE>>) -> Self {
+        self.t = Some(t);
+        self
+    }
 
-            if trigger.poll() {
-                action.act();
-            }
+    fn must_build(self) -> Bridge<'a, AT, TT, AE, TE> {
+        if !self.a.is_some() || !self.t.is_some() {
+            panic!("Couldn't build the bridge.");
+        }
+
+        Bridge {
+            a: self.a.unwrap(),
+            t: self.t.unwrap(),
         }
     }
 }
 
-pub struct Interval {
-    last: Instant,
-    interval: Duration,
-}
+#[cfg(test)]
+mod test {
 
-impl Interval {
-    pub fn new(interval: Duration) -> Self {
-        Self {
-            last: Instant::now(),
-            interval,
-        }
-    }
-}
-
-impl Trigger for Interval {
-    fn poll(&mut self) -> bool {
-        if Instant::now().duration_since(self.last) > self.interval {
-            self.last = Instant::now();
-            return true;
-        }
-
-        false
-    }
-}
-
-pub struct DebugAction;
-
-impl Action for DebugAction {
-    fn act(&mut self) -> bool {
-        println!("Debug");
-        true
-    }
+    #[test]
+    fn try_something() {}
 }
