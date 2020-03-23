@@ -1,55 +1,71 @@
-trait Action<'a, T, E> {
-    fn action(&'a mut self) -> Result<T, E>;
+pub mod actions;
+pub mod triggers;
+
+pub trait Action<T, E, A> {
+    fn act(&mut self, arg: A) -> Result<T, E>;
 }
 
-trait Trigger<'a, T, E> {
-    fn listen(&'a mut self) -> Result<T, E>;
+pub trait Trigger<T, E> {
+    fn check(&mut self) -> Result<T, E>;
 }
 
 // Action Type
 // Trigger Type
 // Action Error
 // Trigger Error
-struct Bridge<'a, AT, TT, AE, TE> {
-    a: Box<dyn Action<'a, AT, AE>>,
-    t: Box<dyn Trigger<'a, TT, TE>>,
+pub struct Task<AT, TT, AE, TE, AA> {
+    a: Box<dyn Action<AT, AE, AA>>,
+    t: Box<dyn Trigger<TT, TE>>,
 }
 
-struct BridgeBuilder<AT, TT, AE, TE, 'a> {
-    a: Option<Box<dyn Action<'a, AT, AE>>>,
-    t: Option<Box<dyn Trigger<'a, TT, TE>>>,
+pub enum ErrorSource<AE, TE> {
+    ActionError(AE),
+    TriggerError(TE),
 }
 
-impl<'a, AT, TT, AE, TE> BridgeBuilder<'a, AT, TT, AE, TE> {
-    fn new() -> Self {
-        Self { a: None, t: None }
+impl<'a, AT, TT, AE, TE, AA> Task<AT, TT, AE, TE, AA>
+where
+    TT: Into<AA>,
+{
+    pub fn check(&'a mut self) -> Result<(), ErrorSource<AE, TE>> {
+        match self.t.check() {
+            Ok(ready) => match self.a.act(ready.into()) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(ErrorSource::ActionError(e)),
+            },
+            Err(e) => Err(ErrorSource::TriggerError(e)),
+        }
     }
+}
 
-    fn with_action(self, a: Box<dyn Action<'a, AT, AE>>) -> Self {
-        self.a = Some(a);
+#[derive(Default)]
+pub struct TaskBuilder<AT, TT, AE, TE, AA> {
+    a: Option<Box<dyn Action<AT, AE, AA>>>,
+    t: Option<Box<dyn Trigger<TT, TE>>>,
+}
+
+impl<AT, TT, AE, TE, AA> TaskBuilder<AT, TT, AE, TE, AA>
+where
+    TT: Into<AA>,
+{
+    pub fn with_action(mut self, a: impl Action<AT, AE, AA> + 'static) -> Self {
+        self.a = Some(Box::new(a));
         self
     }
 
-    fn with_trigger(self, t: Box<dyn Trigger<'a, TT, TE>>) -> Self {
-        self.t = Some(t);
+    pub fn with_trigger(mut self, t: impl Trigger<TT, TE> + 'static) -> Self {
+        self.t = Some(Box::new(t));
         self
     }
 
-    fn must_build(self) -> Bridge<'a, AT, TT, AE, TE> {
-        if !self.a.is_some() || !self.t.is_some() {
-            panic!("Couldn't build the bridge.");
+    pub fn must_build(self) -> Task<AT, TT, AE, TE, AA> {
+        if self.a.is_none() || self.t.is_none() {
+            panic!("Couldn't build the task.");
         }
 
-        Bridge {
+        Task {
             a: self.a.unwrap(),
             t: self.t.unwrap(),
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn try_something() {}
 }
