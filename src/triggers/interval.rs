@@ -13,13 +13,22 @@ impl Interval {
             prev: Instant::now(),
         }
     }
+
+    pub fn with_offset(mut self, d: Duration) -> Self {
+        self.prev += d;
+        self
+    }
 }
 
 impl Trigger<Duration, Duration> for Interval {
     fn check(&mut self) -> Result<Duration, Duration> {
-        let elapsed = Instant::now().duration_since(self.prev);
+        let now = Instant::now();
+        if now < self.prev {
+            return Err(self.prev.duration_since(now));
+        }
+        let elapsed = now.duration_since(self.prev);
         if elapsed > self.d {
-            self.prev = Instant::now();
+            self.prev = now;
             return Ok(elapsed);
         }
 
