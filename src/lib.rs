@@ -76,6 +76,20 @@ where
         }
     }
 
+    pub fn build(self) -> Option<Task<AT, TT, AE, TE, AA>> {
+        if self.a.is_none() || self.t.is_none() || self.conv.is_none() {
+            return None;
+        }
+
+        Some(Task {
+            a: self.a.unwrap(),
+            t: self.t.unwrap(),
+            conv: self.conv.unwrap(),
+        })
+    }
+
+    // We don't have a default here because not all items work with AE: Debug, TE: Debug
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             a: None,
