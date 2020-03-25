@@ -4,6 +4,7 @@ import discord
 import asyncio
 from pathlib import Path
 import os
+import time
 
 global status
 status = False
@@ -32,8 +33,13 @@ class DClient(discord.Client):
             f.write("")
         status = False
 
-
-client = DClient()
+ 
 with open("token.txt", "r") as f:
     token = f.readline()
-    client.run(token, bot=False)
+    while True:
+        client = DClient()
+        try:
+            client.run(token, bot=False)
+        except:
+            # If the bot crashes, wait two minutes and try to restart it
+            time.sleep(60 * 2)

@@ -1,4 +1,4 @@
-use crate::Trigger;
+use crate::trigger::Trigger;
 use std::time::{Duration, Instant};
 
 pub struct Interval {

@@ -1,13 +1,8 @@
-pub mod actions;
-pub mod triggers;
+pub mod action;
+pub mod trigger;
 
-pub trait Action<T, E, A> {
-    fn act(&mut self, arg: A) -> Result<T, E>;
-}
-
-pub trait Trigger<T, E> {
-    fn check(&mut self) -> Result<T, E>;
-}
+use action::Action;
+use trigger::Trigger;
 
 // AT: Action Type
 // TT: Trigger Type
@@ -17,7 +12,7 @@ pub trait Trigger<T, E> {
 pub struct Task<AT, TT, AE, TE, AA> {
     a: Box<dyn Action<AT, AE, AA>>,
     t: Box<dyn Trigger<TT, TE>>,
-    conv: Box<dyn Fn(TT) -> AA>,
+    conv: Option<Box<dyn Fn(TT) -> AA>>,
 }
 
 pub enum ErrorSource<AE, TE> {
@@ -25,14 +20,22 @@ pub enum ErrorSource<AE, TE> {
     TriggerError(TE),
 }
 
-impl<'a, AT, TT, AE, TE, AA> Task<AT, TT, AE, TE, AA> {
+impl<'a, AT, TT: Into<AA>, AE, TE, AA> Task<AT, TT, AE, TE, AA> {
     pub fn check(&'a mut self) -> Result<(), ErrorSource<AE, TE>> {
-        let conv = &self.conv;
-        match self.t.check() {
-            Ok(ready) => match self.a.act(conv(ready)) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(ErrorSource::ActionError(e)),
-            },
+        let checked = self.t.check();
+
+        match checked {
+            Ok(checked) => {
+                let converted_val = match &self.conv {
+                    Some(conv) => conv(checked),
+                    None => checked.into(),
+                };
+
+                self.a
+                    .act(converted_val)
+                    .map(|_| ())
+                    .map_err(ErrorSource::ActionError)
+            }
             Err(e) => Err(ErrorSource::TriggerError(e)),
         }
     }
@@ -65,26 +68,26 @@ where
     }
 
     pub fn must_build(self) -> Task<AT, TT, AE, TE, AA> {
-        if self.a.is_none() || self.t.is_none() || self.conv.is_none() {
+        if self.a.is_none() || self.t.is_none() {
             panic!("Couldn't build the task.");
         }
 
         Task {
             a: self.a.unwrap(),
             t: self.t.unwrap(),
-            conv: self.conv.unwrap(),
+            conv: self.conv,
         }
     }
 
     pub fn build(self) -> Option<Task<AT, TT, AE, TE, AA>> {
-        if self.a.is_none() || self.t.is_none() || self.conv.is_none() {
+        if self.a.is_none() || self.t.is_none() {
             return None;
         }
 
         Some(Task {
             a: self.a.unwrap(),
             t: self.t.unwrap(),
-            conv: self.conv.unwrap(),
+            conv: self.conv,
         })
     }
 

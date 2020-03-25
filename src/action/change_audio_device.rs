@@ -1,4 +1,4 @@
-use crate::Action;
+use crate::action::Action;
 use cpal;
 
 use std::io;

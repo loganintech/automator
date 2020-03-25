@@ -1,6 +1,6 @@
 use dirs;
 
-use crate::Trigger;
+use crate::trigger::Trigger;
 
 use std::fs::File;
 use std::io::{self, Read};
