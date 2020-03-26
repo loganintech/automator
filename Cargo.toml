@@ -16,6 +16,7 @@ name = "audio"
 path = "src/cpal_main.rs"
 
 [dependencies]
-tokio = { version = "0.2.11", features = ["full"] }
+tokio = { version = "0.2.13", features = ["full"] }
 cpal = "0.8.1"
 dirs = "2.0.2"
+async-trait = "0.1.26"

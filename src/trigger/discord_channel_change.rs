@@ -1,7 +1,6 @@
 use dirs;
 
 use crate::trigger::Trigger;
-
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;

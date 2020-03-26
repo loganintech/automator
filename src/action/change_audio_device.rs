@@ -1,4 +1,5 @@
 use crate::action::Action;
+use async_trait::async_trait;
 use cpal;
 
 use std::io;
@@ -19,6 +20,7 @@ impl SelectAudioDevice {
     }
 }
 
+#[async_trait]
 impl<T: AsRef<str>> Action<(), io::Error, T> for SelectAudioDevice {
     fn act(&mut self, arg: T) -> Result<(), io::Error> {
         let typestr = match self.device_type {

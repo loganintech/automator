@@ -1,13 +1,19 @@
 use automator::action::change_audio_device::*;
+use automator::task::*;
 use automator::trigger::discord_channel_change::*;
-use automator::*;
 
 use std::time::Duration;
 
 fn main() {
     let task = TaskBuilder::new()
         .with_trigger(DiscordChannelChecker)
-        .map(|d| if d == "" { "Speakers" } else { "Headphones" })
+        .map(|d| {
+            if d == "" {
+                "Speakers".to_string()
+            } else {
+                "Headphones".to_string()
+            }
+        })
         .with_action(SelectAudioDevice::with_device_type(AudioDeviceType::Output))
         .must_build();
 
