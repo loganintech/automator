@@ -1,0 +1,14 @@
+[Unit]
+Description=Automator
+After=discord_active_channel.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=logan
+ExecStart=/home/logan/Dev/personal/rust/automator/target/release/automator
+
+[Install]
+WantedBy=multi-user.target

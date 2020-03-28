@@ -11,11 +11,14 @@ default-run = "automator"
 name = "automator"
 path ="src/main.rs"
 
-[[bin]]
+[[target.'cfg(windows)'.bin]]
 name = "audio"
 path = "src/cpal_main.rs"
 
-[dependencies]
-tokio = { version = "0.2.11", features = ["full"] }
+[target.'cfg(windows)'.dependencies]
 cpal = "0.8.1"
 dirs = "2.0.2"
+
+[target.'cfg(unix)'.dependencies]
+dirs = "2.0.2"
+strsim = "0.10.0"

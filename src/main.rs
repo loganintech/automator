@@ -1,7 +1,8 @@
 use automator::actions::{change_audio_device::*, print::*};
-use automator::triggers::{discord_channel_change::*, interval::*, timer::*};
+use automator::triggers::{interval::*, read_file_contents::*, timer::*};
 use automator::*;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 fn main() {
@@ -22,10 +23,24 @@ fn main() {
 
     // let task_converted = Box::new(task);
 
+    // #[cfg(windows)]
+    // let task = TaskBuilder::new()
+    //     .with_trigger(ReadFileContents::with_path(PathBuf::))
+    //     .map(|d| if d == "" { "Speakers" } else { "Headphones" })
+    //     .with_action(SelectAudioDevice::with_device_type(AudioDeviceType::Output))
+    //     .must_build();
+
+    #[cfg(not(windows))]
     let task = TaskBuilder::new()
-        .with_trigger(DiscordChannelChecker)
-        .map(|d| if d == "" { "Speakers" } else { "Headphones" })
-        .with_action(SelectAudioDevice::with_device_type(AudioDeviceType::Output))
+        .with_trigger(ReadFileContents::with_path("/home/logan/.is_in_discord"))
+        .map(|d| {
+            if d == "" {
+                "analog stereo"
+            } else {
+                "multichannel output"
+            }
+        })
+        .with_action(SelectAudioDevice)
         .must_build();
 
     let mut tasks = vec![task];

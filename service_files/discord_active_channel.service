@@ -1,0 +1,14 @@
+[Unit]
+Description=Automator
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=logan
+ExecStart=/usr/bin/python3 /home/logan/discord_active_channel.py
+
+[Install]
+WantedBy=multi-user.target
