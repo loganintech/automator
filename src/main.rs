@@ -23,12 +23,20 @@ fn main() {
 
     // let task_converted = Box::new(task);
 
-    // #[cfg(windows)]
-    // let task = TaskBuilder::new()
-    //     .with_trigger(ReadFileContents::with_path(PathBuf::))
-    //     .map(|d| if d == "" { "Speakers" } else { "Headphones" })
-    //     .with_action(SelectAudioDevice::with_device_type(AudioDeviceType::Output))
-    //     .must_build();
+    #[cfg(windows)]
+    let task = TaskBuilder::new()
+        .with_trigger(ReadFileContents::with_path(
+            "C:\\Users\\Logan Saso\\.is_in_discord",
+        ))
+        .map(|d| {
+            if d == "" || d == "AFK" {
+                "Speakers"
+            } else {
+                "Headphones"
+            }
+        })
+        .with_action(SelectAudioDevice::with_device_type(AudioDeviceType::Output))
+        .must_build();
 
     #[cfg(not(windows))]
     let task = TaskBuilder::new()
