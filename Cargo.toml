@@ -11,7 +11,7 @@ default-run = "automator"
 name = "automator"
 path ="src/main.rs"
 
-[[target.'cfg(windows)'.bin]]
+[['cfg(windows)'.bin]]
 name = "audio"
 path = "src/cpal_main.rs"
 
